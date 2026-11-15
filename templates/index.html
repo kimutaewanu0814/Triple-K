@@ -58,6 +58,24 @@
     .criteria strong { display:block; font-size:12px; color:var(--green); margin-bottom:5px; }
     .actions { margin-top:auto; padding-top:18px; display:flex; gap:8px; flex-wrap:wrap; }
     .actions button { font-size:13px; padding:8px 11px; }
+    .completion-actions { margin-top:14px; display:flex; align-items:center; flex-wrap:wrap; gap:8px; }
+    .completion-actions button { min-height:44px; font-size:14px; padding:8px 12px; }
+    .completion-actions .primary { width:auto; }
+    .step-confirmed { color:var(--green); font-weight:700; font-size:14px; }
+    .round-progress, .walk-history { background:white; border:1px solid var(--line); border-radius:14px; padding:16px; }
+    .round-progress h3 { margin-bottom:4px; }
+    .round-progress p { margin:0; font-variant-numeric:tabular-nums; }
+    .round-progress progress { display:block; width:100%; height:14px; margin-top:8px; accent-color:var(--green); }
+    #open-walk-history { margin-top:24px; min-height:44px; font-weight:700; }
+    .walk-history { width:min(560px,calc(100% - 32px)); max-height:calc(100dvh - 32px); color:var(--ink); }
+    .walk-history::backdrop { background:#293d3670; }
+    .walk-heading, .walk-row { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+    .walk-heading button { min-height:44px; }
+    .walk-chart { list-style:none; padding:0; margin:16px 0; display:grid; gap:16px; }
+    .walk-row { overflow-wrap:anywhere; }
+    .walk-count { flex-shrink:0; font-variant-numeric:tabular-nums; }
+    .walk-track { height:10px; margin-top:5px; background:#edf2e8; border-radius:6px; overflow:hidden; }
+    .walk-bar { display:block; height:100%; background:var(--green); border-radius:6px; }
     #feedback { padding:19px 22px; background:#eaf0e3; border-radius:14px; overflow-wrap:anywhere; }
     .support { margin-top:55px; padding:26px; background:#f0f1eb; border-radius:18px; scroll-margin-bottom:100px; }
     .support h2 { font-size:20px; }
@@ -87,7 +105,7 @@
       <label for="task">어떤 일을 시작하고 싶나요?</label>
       <textarea id="task" name="task" maxlength="{{ max_task_length }}" required placeholder="예: 교양 수업 보고서 작성하기" aria-describedby="input-help counter"></textarea>
       <div class="form-bottom"><div><div id="input-help" class="small">전체를 끝내기보다, 2~5분의 시작 행동을 찾아요.</div><div id="counter" class="small">0 / {{ max_task_length }}자</div></div><button id="submit" class="primary" type="submit">첫걸음 만들기</button></div>
-      <p class="small" style="margin-top:15px">입력 내용은 행동 제안을 위해 OpenAI로 전송돼요. 이름·연락처 등 개인정보는 적지 않아도 괜찮아요. 이 서비스는 입력과 결과를 저장하지 않아요.</p>
+      <p class="small" style="margin-top:15px">입력 내용은 행동 제안을 위해 OpenAI로 전송돼요. 이름·연락처 등 개인정보는 적지 않아도 괜찮아요. 걸음을 기록하면 할 일 이름과 걸음 수가 이 브라우저에 저장돼요.</p>
     </form>
     <div id="status" role="status" aria-live="polite"></div>
     <div id="error" role="alert" hidden></div>
@@ -95,10 +113,26 @@
       <h2 id="result-title" tabindex="-1">시작해 볼 작은 행동 3개</h2>
       <p id="context" class="muted"></p>
       <p class="small">예상 시간은 각 행동을 시도하는 시간이에요. 전체 과제의 완료 시간을 뜻하지 않아요.</p>
+      <div class="round-progress">
+        <h3 id="round-title">이번 행동</h3>
+        <p id="round-summary" role="status">0개 완료 / 3개 · 0%</p>
+        <progress id="round-progress" max="3" value="0" aria-labelledby="round-title"></progress>
+      </div>
       <div id="cards"></div>
       <p id="feedback"></p>
       <p class="small" style="margin-top:12px">‘어려워요’는 선택한 행동을 더 쉬운 시작 행동 3개로, ‘쉬워요’는 조금 더 도전적인 다음 행동 3개로 바꿔요. 두 버튼 모두 현재 카드 3개를 새 제안으로 교체해요. ‘쉬워요’를 눌러도 완료로 기록되지는 않아요.</p>
     </section>
+    <button id="open-walk-history" type="button" aria-haspopup="dialog" aria-controls="walk-history">그동안 걸어간 걸음</button>
+    <dialog id="walk-history" class="walk-history" aria-labelledby="walk-title">
+      <div class="walk-heading">
+        <h2 id="walk-title">그동안 걸어간 걸음</h2>
+        <form method="dialog"><button type="submit" autofocus>닫기</button></form>
+      </div>
+      <p id="walk-empty">완료한 행동이 여기에 표시돼요</p>
+      <ul id="walk-chart" class="walk-chart" aria-label="전체와 할 일별 걸음 수"></ul>
+      <p class="small">할 일 이름과 걸음 수는 이 브라우저에 저장돼요.</p>
+      <p id="walk-storage-message" class="small" role="status" hidden>브라우저 저장소를 사용할 수 없어 이 화면에서만 걸음 수를 확인할 수 있어요.</p>
+    </dialog>
     <section id="support" class="support" aria-labelledby="support-title" tabindex="-1">
       <h2 id="support-title">혼자 정리하기 어려울 때, 전문 지원 안내</h2>
       <p>학업이나 생활의 어려움을 누군가와 이야기하고 싶다면 아래 경로를 살펴볼 수 있어요. 이용 여부는 스스로 선택할 수 있어요.</p>
@@ -147,7 +181,115 @@
     const maxLength = Number(input.maxLength);
     let busy = false;
     let currentTask = '';
+    let roundCompleted = 0;
+    const walkKey = 'first-step-walks-v2';
+    const legacyWalkKey = 'first-step-walks-v1';
+    const walkDialog = document.querySelector('#walk-history');
+    const walkStorageMessage = document.querySelector('#walk-storage-message');
+    let walkHistory = readWalkHistory();
     const textLength = value => Array.from(value).length;
+
+    function readWalkHistory(fallback = {previous: 0, tasks: new Map()}) {
+      try {
+        const saved = JSON.parse(localStorage.getItem(walkKey));
+        if (saved) {
+          const tasks = Object.entries(saved.tasks ?? {}).filter(([, count]) => Number.isSafeInteger(count) && count > 0);
+          const previous = Number.isSafeInteger(saved.previous) && saved.previous > 0 ? saved.previous : 0;
+          return {previous, tasks: new Map(tasks)};
+        }
+        const days = JSON.parse(localStorage.getItem(legacyWalkKey));
+        const previous = Object.values(days ?? {}).filter(count => Number.isSafeInteger(count) && count > 0)
+          .reduce((sum, count) => sum + count, 0);
+        return {previous, tasks: new Map()};
+      } catch {
+        walkStorageMessage.hidden = false;
+        return fallback;
+      }
+    }
+    function changeWalkCount(task, delta) {
+      if (walkStorageMessage.hidden) walkHistory = readWalkHistory(walkHistory);
+      const {previous, tasks} = walkHistory;
+      const count = (tasks.get(task) ?? 0) + delta;
+      if (count > 0) tasks.set(task, count);
+      else tasks.delete(task);
+      try {
+        localStorage.setItem(walkKey, JSON.stringify({previous, tasks: Object.fromEntries(tasks)}));
+        walkStorageMessage.hidden = true;
+      } catch {
+        walkStorageMessage.hidden = false;
+      }
+      renderWalkHistory();
+    }
+    function renderWalkHistory() {
+      const {previous, tasks} = walkHistory;
+      const total = Array.from(tasks.values()).reduce((sum, count) => sum + count, previous);
+      const rows = [['그동안 걸어간 총 걸음 수', total], ...tasks];
+      if (previous) rows.push(['이전 기록 (할 일 이름 없음)', previous]);
+      document.querySelector('#walk-empty').hidden = total > 0;
+      const fragment = document.createDocumentFragment();
+      for (const [title, count] of rows) {
+        const item = element('li');
+        const row = element('div', 'walk-row');
+        row.append(element('span', '', title), element('strong', 'walk-count', `${count}걸음`));
+        const track = element('div', 'walk-track');
+        track.setAttribute('aria-hidden', 'true');
+        const bar = element('span', 'walk-bar');
+        bar.style.width = `${total ? count / total * 100 : 0}%`;
+        track.append(bar);
+        item.append(row, track);
+        fragment.append(item);
+      }
+      document.querySelector('#walk-chart').replaceChildren(fragment);
+    }
+    function renderRoundProgress() {
+      document.querySelector('#round-progress').value = roundCompleted;
+      document.querySelector('#round-summary').textContent =
+        `${roundCompleted}개 완료 / 3개 · ${Math.round(roundCompleted / 3 * 100)}%`;
+    }
+    function completionControls(index, task) {
+      const controls = element('div', 'completion-actions');
+      const complete = element('button', 'primary', '완료했어요');
+      const cancel = element('button', '', '완료 취소');
+      const confirmed = element('span', 'step-confirmed', '완료했어요');
+      complete.type = cancel.type = 'button';
+      complete.setAttribute('aria-label', `${index + 1}번 행동 완료했어요`);
+      cancel.setAttribute('aria-label', `${index + 1}번 행동 완료 취소`);
+      cancel.hidden = confirmed.hidden = true;
+      let completed = false;
+      complete.addEventListener('click', () => {
+        if (completed || !cards.contains(controls)) return;
+        completed = true;
+        roundCompleted += 1;
+        changeWalkCount(task, 1);
+        renderRoundProgress();
+        complete.hidden = true;
+        cancel.hidden = confirmed.hidden = false;
+        cancel.focus();
+      });
+      cancel.addEventListener('click', () => {
+        if (!completed || !cards.contains(controls)) return;
+        completed = false;
+        roundCompleted -= 1;
+        changeWalkCount(task, -1);
+        renderRoundProgress();
+        cancel.hidden = confirmed.hidden = true;
+        complete.hidden = false;
+        complete.focus();
+      });
+      controls.append(complete, confirmed, cancel);
+      return controls;
+    }
+    document.querySelector('#open-walk-history').addEventListener('click', () => {
+      if (walkStorageMessage.hidden) walkHistory = readWalkHistory(walkHistory);
+      renderWalkHistory();
+      walkDialog.showModal();
+    });
+    window.addEventListener('storage', event => {
+      if ((event.key === walkKey || event.key === legacyWalkKey || event.key === null) && walkStorageMessage.hidden) {
+        walkHistory = readWalkHistory(walkHistory);
+        renderWalkHistory();
+      }
+    });
 
     input.addEventListener('input', () => {
       document.querySelector('#counter').textContent = `${textLength(input.value)} / ${maxLength}자`;
@@ -195,10 +337,12 @@
         easier.setAttribute('aria-label', `${index + 1}번 행동 ‘${step.title}’에서 조금 더 도전적인 다음 행동 만들기`);
         easier.addEventListener('click', () => requestSteps('/api/advance', {task: currentTask, step}, step.title));
         actions.append(harder, easier);
-        card.append(top, element('h3', '', step.title), element('p', 'description', step.description), criteria, actions);
+        card.append(top, element('h3', '', step.title), element('p', 'description', step.description), criteria, actions, completionControls(index, task));
         fragment.append(card);
       });
       cards.replaceChildren(fragment);
+      roundCompleted = 0;
+      renderRoundProgress();
       document.querySelector('#feedback').textContent = data.feedback;
       document.querySelector('#context').textContent = selected ? advancing ? `‘${selected}’에서 이어갈 조금 더 도전적인 다음 행동 3개예요. 원래 할 일: ${task}` : `‘${selected}’을 더 쉬운 시작 행동 3개로 바꿨어요. 원래 할 일: ${task}` : `함께 시작할 일: ${task}`;
       currentTask = task;
