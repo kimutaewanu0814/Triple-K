@@ -1,0 +1,28 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /firstStepResume/{uid} {
+      function ownsRecord() {
+        return request.auth != null && request.auth.uid == uid;
+      }
+      function validStep(step) {
+        return step.keys().hasAll(['title', 'description', 'minutes', 'completion_criteria'])
+          && step.keys().hasOnly(['title', 'description', 'minutes', 'completion_criteria', 'task', 'completed'])
+          && (!('task' in step) || (step.task is string && step.task.size() > 0 && step.task.size() <= 1000 && step.task.matches('(?s).*\\S.*')))
+          && (!('completed' in step) || step.completed is bool)
+          && step.title is string && step.title.size() > 0 && step.title.size() <= 120
+          && step.description is string && step.description.size() > 0 && step.description.size() <= 700
+          && step.minutes is int && step.minutes >= 2 && step.minutes <= 5
+          && step.completion_criteria is string
+          && step.completion_criteria.size() > 0 && step.completion_criteria.size() <= 400;
+      }
+      allow get, delete: if ownsRecord();
+      allow create: if ownsRecord() && validStep(request.resource.data)
+        && request.resource.data.keys().hasAll(['task', 'completed']);
+      // 기존 행동은 유지하면서 원래 할 일과 완료 여부를 연결할 수 있다.
+      allow update: if ownsRecord() && validStep(request.resource.data)
+        && (!('task' in resource.data) || 'task' in request.resource.data)
+        && (!('completed' in resource.data) || 'completed' in request.resource.data);
+    }
+  }
+}
